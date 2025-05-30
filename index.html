@@ -1,60 +1,28 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Anime Hub - Современный аниме сайт</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Arial', sans-serif;
+            font-family: 'Poppins', sans-serif;
         }
 
         body {
             background-color: #1a1a1a;
             color: #ffffff;
             line-height: 1.6;
+            transition: background-color 0.3s;
+        }
+
+        body.light-theme {
+            background-color: #f5f5f5;
+            color: #333;
         }
 
         .container {
@@ -65,49 +33,98 @@
 
         header {
             background: linear-gradient(135deg, #2c3e50, #3498db);
-            padding: 20px;
+            padding: 30px;
             text-align: center;
             border-radius: 10px;
             margin-bottom: 20px;
+            animation: fadeIn 1s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         header h1 {
-            font-size: 2.5em;
+            font-size: 2.8em;
             margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        header h1::before {
+            content: '🎬';
+            font-size: 1.2em;
         }
 
         .search-bar {
             display: flex;
             justify-content: center;
             margin: 20px 0;
+            position: relative;
         }
 
         .search-bar input {
-            padding: 10px;
-            width: 300px;
+            padding: 12px 40px 12px 15px;
+            width: 350px;
             border: none;
-            border-radius: 5px 0 0 5px;
+            border-radius: 25px;
             font-size: 1em;
+            background-color: #2c2c2c;
+            color: #fff;
+            transition: box-shadow 0.3s, background-color 0.3s;
+        }
+
+        body.light-theme .search-bar input {
+            background-color: #fff;
+            color: #333;
+        }
+
+        .search-bar input:focus {
+            outline: none;
+            box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
         }
 
         .search-bar button {
-            padding: 10px 20px;
+            padding: 12px 20px;
             border: none;
             background-color: #3498db;
             color: white;
-            border-radius: 0 5px 5px 0;
+            border-radius: 25px;
+            margin-left: 10px;
             cursor: pointer;
-            transition: background-color 0.3s;
+            transition: background-color 0.3s, transform 0.2s;
         }
 
         .search-bar button:hover {
             background-color: #2980b9;
+            transform: scale(1.05);
+        }
+
+        .search-bar .clear-btn {
+            position: absolute;
+            right: 80px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            font-size: 1.2em;
+            display: none;
+        }
+
+        body.light-theme .search-bar .clear-btn {
+            color: #333;
         }
 
         .anime-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 20px;
+            position: relative;
         }
 
         .anime-card {
@@ -116,6 +133,12 @@
             overflow: hidden;
             transition: transform 0.3s, box-shadow 0.3s;
             cursor: pointer;
+            position: relative;
+        }
+
+        body.light-theme .anime-card {
+            background-color: #fff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
 
         .anime-card:hover {
@@ -127,6 +150,23 @@
             width: 100%;
             height: 250px;
             object-fit: cover;
+            loading: lazy;
+        }
+
+        .anime-card .info-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 10px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .anime-card:hover .info-overlay {
+            opacity: 1;
         }
 
         .anime-card h3 {
@@ -146,6 +186,13 @@
             justify-content: center;
             align-items: center;
             z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .modal.show {
+            display: flex;
+            opacity: 1;
         }
 
         .modal-content {
@@ -157,15 +204,30 @@
             overflow-y: auto;
             padding: 20px;
             position: relative;
+            transform: scale(0.8);
+            transition: transform 0.3s ease-in-out;
+        }
+
+        body.light-theme .modal-content {
+            background-color: #fff;
+        }
+
+        .modal.show .modal-content {
+            transform: scale(1);
         }
 
         .modal-content .close {
             position: absolute;
             top: 10px;
             right: 15px;
-            font-size: 1.5em;
+            font-size: 1.8em;
             cursor: pointer;
             color: #3498db;
+            transition: color 0.3s;
+        }
+
+        .modal-content .close:hover {
+            color: #2980b9;
         }
 
         .modal-content h2 {
@@ -185,6 +247,14 @@
             line-height: 1.8;
         }
 
+        .modal-content .thumbnail {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
         .kinobox-player {
             width: 100%;
             max-width: 800px;
@@ -198,9 +268,88 @@
             color: #e74c3c;
             text-align: center;
             margin: 10px 0;
+            background: rgba(231, 76, 60, 0.1);
+            padding: 10px;
+            border-radius: 5px;
         }
 
-        @media (max-width: 600px) {
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+        }
+
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        .back-to-top {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #3498db;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: none;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .back-to-top:hover {
+            background-color: #2980b9;
+            transform: scale(1.1);
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #3498db;
+            color: white;
+            padding: 10px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .theme-toggle:hover {
+            background-color: #2980b9;
+        }
+
+        @media (max-width: 768px) {
+            .anime-grid {
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            }
+
+            .search-bar input {
+                width: 250px;
+            }
+
+            .kinobox-player {
+                height: 300px;
+            }
+
+            .modal-content {
+                width: 95%;
+                padding: 15px;
+            }
+
+            header h1 {
+                font-size: 2em;
+            }
+        }
+
+        @media (max-width: 480px) {
             .anime-grid {
                 grid-template-columns: 1fr;
             }
@@ -213,14 +362,14 @@
                 height: 200px;
             }
 
-            .modal-content {
-                width: 95%;
-                padding: 15px;
+            .modal-content .thumbnail {
+                height: 150px;
             }
         }
     </style>
 </head>
 <body>
+    <div class="theme-toggle" onclick="toggleTheme()" title="Переключить тему">🌙</div>
     <header>
         <h1>Anime Hub</h1>
         <p>Смотрите лучшие аниме с помощью Shikimori и Kinobox</p>
@@ -228,15 +377,19 @@
 
     <div class="container">
         <div class="search-bar">
-            <input type="text" id="searchInput" placeholder="Поиск аниме...">
-            <button onclick="searchAnime()">Искать</button>
+            <input type="text" id="searchInput" placeholder="Поиск аниме..." aria-label="Поиск аниме">
+            <button class="clear-btn" onclick="clearSearch()">×</button>
+            <button onclick="searchAnime()" aria-label="Искать">Искать</button>
         </div>
 
-        <div class="anime-grid" id="animeGrid"></div>
+        <div class="anime-grid" id="animeGrid">
+            <div class="loader" id="loader"></div>
+        </div>
 
-        <div class="modal" id="animeModal">
+        <div class="modal" id="animeModal" role="dialog" aria-labelledby="modalTitle">
             <div class="modal-content">
-                <span class="close" onclick="closeModal()">×</span>
+                <span class="close" onclick="closeModal()" aria-label="Закрыть модальное окно">×</span>
+                <img class="thumbnail" id="modalThumbnail" src="" alt="Anime thumbnail">
                 <h2 id="modalTitle"></h2>
                 <div class="rating" id="modalRating"></div>
                 <div class="kinobox-player" id="kinoboxPlayer"></div>
@@ -244,13 +397,51 @@
                 <div class="description" id="modalDescription"></div>
             </div>
         </div>
+
+        <div class="back-to-top" onclick="scrollToTop()" title="Наверх">↑</div>
     </div>
 
     <script src="https://kinobox.tv/kinobox.min.js"></script>
-    <script>
+    <script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+            return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+            if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+                try {
+                    var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                    var firstSheetName = workbook.SheetNames[0];
+                    var worksheet = workbook.Sheets[firstSheetName];
+                    var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                    var filteredData = jsonData.filter(row => row.some(filledCell));
+                    var headerRowIndex = filteredData.findIndex((row, index) =>
+                        row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                    );
+                    if (headerRowIndex === -1 || headerRowIndex > 25) {
+                        headerRowIndex = 0;
+                    }
+                    var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex));
+                    csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                    return csv;
+                } catch (e) {
+                    console.error(e);
+                    return "";
+                }
+            }
+            return gk_fileData[filename] || "";
+        }
+
         const API_URL = 'https://shikimori.one/api/animes';
 
         async function fetchAnime(query = '') {
+            const loader = document.getElementById('loader');
+            const animeGrid = document.getElementById('animeGrid');
+            loader.style.display = 'block';
+            animeGrid.style.opacity = '0.5';
+
             try {
                 const response = await fetch(`${API_URL}?limit=12&search=${encodeURIComponent(query)}`);
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -259,79 +450,106 @@
                 displayAnime(data);
             } catch (error) {
                 console.error('Ошибка при получении данных:', error);
-                document.getElementById('animeGrid').innerHTML = '<p class="error-message">Ошибка загрузки аниме. Попробуйте позже.</p>';
+                animeGrid.innerHTML = '<p class="error-message">Ошибка загрузки аниме. Попробуйте позже.</p>';
+            } finally {
+                loader.style.display = 'none';
+                animeGrid.style.opacity = '1';
             }
         }
 
         function displayAnime(animeList) {
             const animeGrid = document.getElementById('animeGrid');
-            animeGrid.innerHTML = '';
+            animeGrid.innerHTML = '<div class="loader" id="loader" style="display: none;"></div>';
 
             animeList.forEach(anime => {
                 const card = document.createElement('div');
                 card.className = 'anime-card';
+                card.setAttribute('tabindex', '0');
                 card.innerHTML = `
                     <img src="https://shikimori.one${anime.image?.original || '/assets/globals/missing_original.jpg'}" alt="${anime.name || 'Без названия'}">
                     <h3>${anime.name || 'Без названия'}</h3>
+                    <div class="info-overlay">
+                        <p>${anime.kind || 'N/A'} • ${anime.aired_on?.slice(0, 4) || 'N/A'}</p>
+                    </div>
                 `;
-                card.addEventListener('click', () => showAnimeModal(anime));
+                card.addEventListener('click', () => {
+                    console.log('Card clicked:', anime.name); // Debug log
+                    showAnimeModal(anime);
+                });
+                card.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        console.log('Card enter key:', anime.name); // Debug log
+                        showAnimeModal(anime);
+                    }
+                });
                 animeGrid.appendChild(card);
             });
+
+            updateBackToTopVisibility();
         }
 
         function showAnimeModal(anime) {
+            console.log('Opening modal for:', anime); // Debug log
             const modal = document.getElementById('animeModal');
             const modalTitle = document.getElementById('modalTitle');
             const modalRating = document.getElementById('modalRating');
             const modalDescription = document.getElementById('modalDescription');
+            const modalThumbnail = document.getElementById('modalThumbnail');
             const playerContainer = document.getElementById('kinoboxPlayer');
             const playerError = document.getElementById('playerError');
 
+            // Set modal content with fallback values
             modalTitle.textContent = anime.name || 'Без названия';
             modalRating.textContent = `Рейтинг: ${anime.score || 'N/A'}`;
             modalDescription.textContent = anime.description || 'Описание отсутствует';
+            modalThumbnail.src = `https://shikimori.one${anime.image?.original || '/assets/globals/missing_original.jpg'}`;
+            modalThumbnail.alt = anime.name || 'Без названия';
             playerContainer.innerHTML = '';
             playerError.style.display = 'none';
 
-            // Check if Kinobox script is loaded
-            if (typeof kbox === 'undefined') {
+            // Show modal immediately to ensure it appears
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('show'), 10); // Trigger CSS transition
+
+            // Attempt to initialize Kinobox player
+            if (typeof kbox !== 'undefined') {
+                try {
+                    kbox('#kinoboxPlayer', {
+                        search: {
+                            title: anime.name || '',
+                        },
+                        menu: {
+                            enable: true,
+                            default: 'menu_list',
+                            mobile: 'menu_button',
+                            format: '{N} :: {T} ({Q})',
+                            limit: 5,
+                            open: false
+                        },
+                        notFoundMessage: 'Видео не найдено для этого аниме.'
+                    });
+                } catch (error) {
+                    console.error('Ошибка инициализации плеера:', error);
+                    playerError.textContent = 'Ошибка загрузки плеера. Попробуйте позже.';
+                    playerError.style.display = 'block';
+                }
+            } else {
+                console.warn('Kinobox плеер не загружен');
                 playerError.textContent = 'Ошибка: Kinobox плеер не загружен.';
                 playerError.style.display = 'block';
-                modal.style.display = 'flex';
-                return;
             }
 
-            try {
-                // Initialize Kinobox player with title as fallback
-                kbox('#kinoboxPlayer', {
-                    search: {
-                        title: anime.name, // Fallback to title since Shikimori ID may not be supported
-                        // shikimori: anime.id.toString() // Uncomment if Shikimori ID is confirmed to work
-                    },
-                    menu: {
-                        enable: true,
-                        default: 'menu_list',
-                        mobile: 'menu_button',
-                        format: '{N} :: {T} ({Q})',
-                        limit: 5,
-                        open: false
-                    },
-                    notFoundMessage: 'Видео не найдено для этого аниме.'
-                });
-            } catch (error) {
-                console.error('Ошибка инициализации плеера:', error);
-                playerError.textContent = 'Ошибка загрузки плеера. Попробуйте позже.';
-                playerError.style.display = 'block';
-            }
-
-            modal.style.display = 'flex';
+            modal.focus();
         }
 
         function closeModal() {
             const modal = document.getElementById('animeModal');
             const playerContainer = document.getElementById('kinoboxPlayer');
-            modal.style.display = 'none';
-            playerContainer.innerHTML = ''; // Clear player
+            modal.classList.remove('show');
+            setTimeout(() => {
+                modal.style.display = 'none';
+                playerContainer.innerHTML = '';
+            }, 300);
         }
 
         function searchAnime() {
@@ -339,18 +557,55 @@
             fetchAnime(query);
         }
 
+        function clearSearch() {
+            const searchInput = document.getElementById('searchInput');
+            searchInput.value = '';
+            searchInput.focus();
+            document.querySelector('.clear-btn').style.display = 'none';
+            fetchAnime();
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('light-theme');
+            localStorage.setItem('theme', document.body.classList.contains('light-theme') ? 'light' : 'dark');
+        }
+
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function updateBackToTopVisibility() {
+            const backToTop = document.querySelector('.back-to-top');
+            if (window.scrollY > 300) {
+                backToTop.style.display = 'block';
+            } else {
+                backToTop.style.display = 'none';
+            }
+        }
+
         // Initial fetch
         fetchAnime();
 
-        // Add enter key support for search
+        // Event listeners
         document.getElementById('searchInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') searchAnime();
         });
 
-        // Close modal on click outside
+        document.getElementById('searchInput').addEventListener('input', () => {
+            const clearBtn = document.querySelector('.clear-btn');
+            clearBtn.style.display = document.getElementById('searchInput').value ? 'block' : 'none';
+        });
+
         document.getElementById('animeModal').addEventListener('click', (e) => {
             if (e.target === document.getElementById('animeModal')) closeModal();
         });
+
+        window.addEventListener('scroll', updateBackToTopVisibility);
+
+        // Load saved theme
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.add('light-theme');
+        }
     </script>
 </body>
 </html>
