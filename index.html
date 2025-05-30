@@ -1,0 +1,356 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anime Hub - Современный аниме сайт</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background-color: #1a1a1a;
+            color: #ffffff;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            padding: 20px;
+            text-align: center;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .search-bar {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .search-bar input {
+            padding: 10px;
+            width: 300px;
+            border: none;
+            border-radius: 5px 0 0 5px;
+            font-size: 1em;
+        }
+
+        .search-bar button {
+            padding: 10px 20px;
+            border: none;
+            background-color: #3498db;
+            color: white;
+            border-radius: 0 5px 5px 0;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .search-bar button:hover {
+            background-color: #2980b9;
+        }
+
+        .anime-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .anime-card {
+            background-color: #2c2c2c;
+            border-radius: 10px;
+            overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+
+        .anime-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .anime-card img {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+        }
+
+        .anime-card h3 {
+            padding: 10px;
+            font-size: 1.2em;
+            text-align: center;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: #2c2c2c;
+            border-radius: 10px;
+            max-width: 900px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 20px;
+            position: relative;
+        }
+
+        .modal-content .close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 1.5em;
+            cursor: pointer;
+            color: #3498db;
+        }
+
+        .modal-content h2 {
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+
+        .modal-content .rating {
+            font-size: 1.2em;
+            color: #f1c40f;
+            margin-bottom: 15px;
+        }
+
+        .modal-content .description {
+            font-size: 1em;
+            margin-bottom: 20px;
+            line-height: 1.8;
+        }
+
+        .kinobox-player {
+            width: 100%;
+            max-width: 800px;
+            height: 450px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .error-message {
+            color: #e74c3c;
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        @media (max-width: 600px) {
+            .anime-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .search-bar input {
+                width: 200px;
+            }
+
+            .kinobox-player {
+                height: 200px;
+            }
+
+            .modal-content {
+                width: 95%;
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Anime Hub</h1>
+        <p>Смотрите лучшие аниме с помощью Shikimori и Kinobox</p>
+    </header>
+
+    <div class="container">
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Поиск аниме...">
+            <button onclick="searchAnime()">Искать</button>
+        </div>
+
+        <div class="anime-grid" id="animeGrid"></div>
+
+        <div class="modal" id="animeModal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal()">×</span>
+                <h2 id="modalTitle"></h2>
+                <div class="rating" id="modalRating"></div>
+                <div class="kinobox-player" id="kinoboxPlayer"></div>
+                <div class="error-message" id="playerError" style="display: none;"></div>
+                <div class="description" id="modalDescription"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://kinobox.tv/kinobox.min.js"></script>
+    <script>
+        const API_URL = 'https://shikimori.one/api/animes';
+
+        async function fetchAnime(query = '') {
+            try {
+                const response = await fetch(`${API_URL}?limit=12&search=${encodeURIComponent(query)}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const data = await response.json();
+                if (!Array.isArray(data)) throw new Error('Некорректный формат данных');
+                displayAnime(data);
+            } catch (error) {
+                console.error('Ошибка при получении данных:', error);
+                document.getElementById('animeGrid').innerHTML = '<p class="error-message">Ошибка загрузки аниме. Попробуйте позже.</p>';
+            }
+        }
+
+        function displayAnime(animeList) {
+            const animeGrid = document.getElementById('animeGrid');
+            animeGrid.innerHTML = '';
+
+            animeList.forEach(anime => {
+                const card = document.createElement('div');
+                card.className = 'anime-card';
+                card.innerHTML = `
+                    <img src="https://shikimori.one${anime.image?.original || '/assets/globals/missing_original.jpg'}" alt="${anime.name || 'Без названия'}">
+                    <h3>${anime.name || 'Без названия'}</h3>
+                `;
+                card.addEventListener('click', () => showAnimeModal(anime));
+                animeGrid.appendChild(card);
+            });
+        }
+
+        function showAnimeModal(anime) {
+            const modal = document.getElementById('animeModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalRating = document.getElementById('modalRating');
+            const modalDescription = document.getElementById('modalDescription');
+            const playerContainer = document.getElementById('kinoboxPlayer');
+            const playerError = document.getElementById('playerError');
+
+            modalTitle.textContent = anime.name || 'Без названия';
+            modalRating.textContent = `Рейтинг: ${anime.score || 'N/A'}`;
+            modalDescription.textContent = anime.description || 'Описание отсутствует';
+            playerContainer.innerHTML = '';
+            playerError.style.display = 'none';
+
+            // Check if Kinobox script is loaded
+            if (typeof kbox === 'undefined') {
+                playerError.textContent = 'Ошибка: Kinobox плеер не загружен.';
+                playerError.style.display = 'block';
+                modal.style.display = 'flex';
+                return;
+            }
+
+            try {
+                // Initialize Kinobox player with title as fallback
+                kbox('#kinoboxPlayer', {
+                    search: {
+                        title: anime.name, // Fallback to title since Shikimori ID may not be supported
+                        // shikimori: anime.id.toString() // Uncomment if Shikimori ID is confirmed to work
+                    },
+                    menu: {
+                        enable: true,
+                        default: 'menu_list',
+                        mobile: 'menu_button',
+                        format: '{N} :: {T} ({Q})',
+                        limit: 5,
+                        open: false
+                    },
+                    notFoundMessage: 'Видео не найдено для этого аниме.'
+                });
+            } catch (error) {
+                console.error('Ошибка инициализации плеера:', error);
+                playerError.textContent = 'Ошибка загрузки плеера. Попробуйте позже.';
+                playerError.style.display = 'block';
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('animeModal');
+            const playerContainer = document.getElementById('kinoboxPlayer');
+            modal.style.display = 'none';
+            playerContainer.innerHTML = ''; // Clear player
+        }
+
+        function searchAnime() {
+            const query = document.getElementById('searchInput').value;
+            fetchAnime(query);
+        }
+
+        // Initial fetch
+        fetchAnime();
+
+        // Add enter key support for search
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchAnime();
+        });
+
+        // Close modal on click outside
+        document.getElementById('animeModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('animeModal')) closeModal();
+        });
+    </script>
+</body>
+</html>
